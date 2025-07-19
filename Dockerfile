@@ -1,5 +1,5 @@
-# Use uma imagem oficial do Python como base
-FROM python:3.9-slim-buster
+# Use uma imagem oficial do Python como base (versão completa do Debian Buster)
+FROM python:3.9-buster
 
 # Define o diretório de trabalho dentro do container
 WORKDIR /usr/src/app
@@ -7,23 +7,15 @@ WORKDIR /usr/src/app
 # Copia o arquivo de requisitos para o diretório de trabalho
 COPY requirements.txt .
 
-# Instala as dependências do sistema operacional necessárias para bcrypt e cryptography
-# E então, instala as dependências Python.
-RUN apt-get update --fix-missing -y \
-    && apt-get install -y --no-install-recommends \
-    build-essential \
-    libffi-dev \
-    # Limpa o cache do apt imediatamente após a instalação para reduzir o tamanho da imagem final
-    && rm -rf /var/lib/apt/lists/* \
-    && pip install --no-cache-dir -r requirements.txt \
-    && apt-get remove -y build-essential libffi-dev \
-    && apt-get autoremove -y \
-    && apt-get clean
+# Instala as dependências Python usando pip
+# Como a imagem 'buster' já tem muitas ferramentas de build, esta etapa deve ser suficiente.
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Copia todo o conteúdo do seu repositório (incluindo a pasta 'app') para o WORKDIR
 COPY . .
 
 # Explicitamente adiciona o diretório de trabalho ao PYTHONPATH
+# Isso garante que o Python encontre o pacote 'app'
 ENV PYTHONPATH=/usr/src/app
 
 # Expõe a porta que o Uvicorn irá escutar

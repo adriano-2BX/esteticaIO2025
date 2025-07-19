@@ -7,33 +7,44 @@ from sqlalchemy.orm import Session
 from . import schemas, models, auth # Importa os módulos de schemas, models e auth
 from .database import get_db, engine # Importa get_db e engine para criar tabelas
 
+# --- INSTÂNCIA DO FASTAPI (MOVIDA PARA CIMA) ---
+app = FastAPI(
+    title="Estética.IO API",
+    description="API para o sistema de gestão de clínica estética",
+    version="0.1.0",
+)
+
 # --- Criação de Tabelas no Startup (Instalador) ---
-# Esta é uma forma simples de garantir que as tabelas são criadas
-# quando a aplicação inicia. Para produção robusta, você pode querer
-# um processo de migração de banco de dados mais sofisticado (Alembic).
-# Mas para o "instalador" inicial, isso funciona.
 @app.on_event("startup")
 def on_startup():
     """Função executada na inicialização da aplicação."""
-    # Cria todas as tabelas se elas não existirem
-    models.Base.metadata.create_all(bind=engine)
-    print("Tabelas do banco de dados verificadas/criadas.")
+    print("Iniciando a aplicação e verificando/criando tabelas do banco de dados...")
+    try:
+        # Cria todas as tabelas se elas não existirem
+        models.Base.metadata.create_all(bind=engine)
+        print("Tabelas do banco de dados verificadas/criadas com sucesso.")
 
-    # Opcional: Criar um usuário admin padrão se não existir
-    db = next(get_db()) # Obtém uma sessão de DB
-    if not auth.get_user_by_email(db, email="admin@estetica.com"):
-        hashed_password = auth.get_password_hash("1234")
-        admin_user = models.User(
-            email="admin@estetica.com",
-            password_hash=hashed_password,
-            name="Administrador",
-            role="admin"
-        )
-        db.add(admin_user)
-        db.commit()
-        db.refresh(admin_user)
-        print("Usuário administrador padrão criado.")
-    db.close()
+        # Opcional: Criar um usuário admin padrão se não existir
+        db = next(get_db()) # Obtém uma sessão de DB
+        if not auth.get_user_by_email(db, email="admin@estetica.com"):
+            hashed_password = auth.get_password_hash("1234")
+            admin_user = models.User(
+                email="admin@estetica.com",
+                password_hash=hashed_password,
+                name="Administrador",
+                role="admin"
+            )
+            db.add(admin_user)
+            db.commit()
+            db.refresh(admin_user)
+            print("Usuário administrador padrão criado com sucesso: admin@estetica.com")
+        else:
+            print("Usuário administrador padrão já existe.")
+        db.close()
+    except Exception as e:
+        print(f"ERRO CRÍTICO na inicialização do banco de dados: {e}")
+        # Em produção, você pode querer que a aplicação falhe ao iniciar se o DB não estiver pronto.
+        raise # Re-levanta a exceção para que o EasyPanel possa reportar a falha.
 
 
 # --- Endpoints de Autenticação ---
@@ -72,3 +83,14 @@ async def read_admin_only_data(current_admin: models.User = Depends(auth.get_cur
     Endpoint de exemplo acessível apenas por usuários com role 'admin'.
     """
     return {"message": f"Olá, {current_admin.name}! Você tem acesso de admin."}
+
+# --- Rotas de Saúde da Aplicação (Mantidas no final para organização) ---
+@app.get("/", response_model=schemas.MessageResponse)
+async def read_root():
+    """Retorna uma mensagem de boas-vindas."""
+    return {"message": "Bem-vindo à API da Estética.IO!"}
+
+@app.get("/health", response_model=schemas.MessageResponse)
+async def health_check():
+    """Verifica o status da API."""
+    return {"status": "ok", "message": "API está funcionando!"}

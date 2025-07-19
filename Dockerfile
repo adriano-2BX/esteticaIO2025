@@ -5,15 +5,18 @@ FROM python:3.9-slim-buster
 WORKDIR /app
 
 # Copia o arquivo de requisitos para o diretório de trabalho
-# É importante copiar requirements.txt antes do resto do código para que o cache do Docker funcione bem
 COPY requirements.txt .
 
-# Instala as dependências Python.
-# A dependência mysqlclient precisa de algumas bibliotecas de desenvolvimento no sistema operacional.
-# Instalamos elas, rodamos o pip install, e depois as removemos para manter a imagem pequena.
-RUN apt-get update && apt-get install -y default-libmysqlclient-dev build-essential \
+# Instala as dependências do sistema operacional necessárias para mysqlclient
+# e as dependências Python.
+# O pacote 'libmysqlclient-dev' é mais comum e genérico.
+RUN apt-get update --fix-missing && apt-get install -y \
+    libmysqlclient-dev \
+    build-essential \
+    pkg-config \
     && pip install --no-cache-dir -r requirements.txt \
-    && apt-get remove -y build-essential \
+    && apt-get remove -y build-essential pkg-config \
+    && apt-get autoremove -y \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Copia o restante do código da aplicação (todo o conteúdo de ./app/ para /app no container)

@@ -1,5 +1,5 @@
 fastapi==0.111.0
-mysqlclient==2.2.0
+PyMySQL
 python-dotenv==1.0.1
 SQLAlchemy==2.0.30
 uvicorn==0.30.1

@@ -1,6 +1,9 @@
 # Use uma imagem oficial do Python como base
 FROM python:3.9-slim-buster
 
+# Define um argumento de build para invalidar o cache do apt-get update
+ARG BUILD_DATE
+
 # Define o diretório de trabalho dentro do container
 WORKDIR /app
 
@@ -9,15 +12,19 @@ COPY requirements.txt .
 
 # Instala as dependências do sistema operacional necessárias para mysqlclient
 # e as dependências Python.
-# O pacote 'libmysqlclient-dev' é mais comum e genérico.
-RUN apt-get update --fix-missing && apt-get install -y \
+# O pacote 'libmysqlclient-dev' é o mais comum e genérico.
+# O uso de BUILD_DATE força uma reavaliação desta camada do Dockerfile.
+RUN apt-get update --fix-missing -y \
+    && apt-get install -y \
     libmysqlclient-dev \
     build-essential \
     pkg-config \
+    # Limpa o cache do apt para reduzir o tamanho da imagem final
+    && rm -rf /var/lib/apt/lists/* \
     && pip install --no-cache-dir -r requirements.txt \
     && apt-get remove -y build-essential pkg-config \
     && apt-get autoremove -y \
-    && apt-get clean && rm -rf /var/lib/apt/lists/*
+    && apt-get clean
 
 # Copia o restante do código da aplicação (todo o conteúdo de ./app/ para /app no container)
 COPY ./app .
